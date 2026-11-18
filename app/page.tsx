@@ -166,9 +166,8 @@ export default function Home() {
             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-amber-400"
           />
 
-          {/* Selector separado de Calendario + Hora + AM/PM */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Calendario */}
+            {/* Solo Calendario (mantiene Clear y Today, sin la lista fea de horas) */}
             <div className="relative flex items-center">
               <Calendar
                 size={16}
@@ -184,7 +183,7 @@ export default function Home() {
               />
             </div>
 
-            {/* Hora, Minutos y AM/PM */}
+            {/* Selector limpio de Hora, Minutos y AM/PM */}
             <div className="flex items-center gap-1.5">
               <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 flex-1 justify-center">
                 <Clock size={15} className="text-amber-400 mr-1.5 shrink-0" />
@@ -215,7 +214,6 @@ export default function Home() {
                 </select>
               </div>
 
-              {/* Botones AM / PM */}
               <div className="flex bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 shrink-0">
                 {(['AM', 'PM'] as const).map((p) => (
                   <button
