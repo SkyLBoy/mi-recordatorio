@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Check, Clock, AlertCircle, Plus, Trash2, Bell } from 'lucide-react';
+import { Check, Clock, AlertCircle, Plus, Trash2, Bell, Calendar } from 'lucide-react';
 
 interface Tarea {
   id: string;
@@ -14,11 +14,22 @@ interface Tarea {
   notificado: boolean;
 }
 
+const obtenerFechaHoyLocal = () => {
+  const ahora = new Date();
+  const anio = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+};
+
 export default function Home() {
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [fecha, setFecha] = useState('');
+  const [fecha, setFecha] = useState(obtenerFechaHoyLocal);
+  const [hora, setHora] = useState('09');
+  const [minuto, setMinuto] = useState('00');
+  const [periodo, setPeriodo] = useState<'AM' | 'PM'>('AM');
   const [urgente, setUrgente] = useState(false);
   const [cargando, setCargando] = useState(true);
 
@@ -42,13 +53,24 @@ export default function Home() {
     e.preventDefault();
     if (!titulo.trim() || !fecha) return;
 
-    const fechaISO = new Date(fecha).toISOString();
+    let hora24 = parseInt(hora, 10);
+    if (periodo === 'PM' && hora24 !== 12) hora24 += 12;
+    if (periodo === 'AM' && hora24 === 12) hora24 = 0;
+
+    const fechaLocal = new Date(
+      `${fecha}T${String(hora24).padStart(2, '0')}:${minuto}:00`
+    );
+
+    if (isNaN(fechaLocal.getTime())) {
+      alert('Selecciona una fecha y hora válidas.');
+      return;
+    }
 
     const { error } = await supabase.from('tareas').insert([
       {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
-        fecha_recordatorio: fechaISO,
+        fecha_recordatorio: fechaLocal.toISOString(),
         urgente,
       },
     ]);
@@ -56,7 +78,7 @@ export default function Home() {
     if (!error) {
       setTitulo('');
       setDescripcion('');
-      setFecha('');
+      setFecha(obtenerFechaHoyLocal());
       setUrgente(false);
       cargarTareas();
     } else {
@@ -95,8 +117,16 @@ export default function Home() {
       month: 'short',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     });
   };
+
+  const horas = Array.from({ length: 12 }, (_, i) =>
+    String(i + 1).padStart(2, '0')
+  );
+  const minutos = Array.from({ length: 12 }, (_, i) =>
+    String(i * 5).padStart(2, '0')
+  );
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-8">
@@ -136,15 +166,76 @@ export default function Home() {
             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-amber-400"
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <input
-              type="datetime-local"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              required
-              className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-400"
-            />
+          {/* Selector separado de Calendario + Hora + AM/PM */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Calendario */}
+            <div className="relative flex items-center">
+              <Calendar
+                size={16}
+                className="text-amber-400 absolute left-3 pointer-events-none"
+              />
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                required
+                style={{ colorScheme: 'dark' }}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-400 cursor-pointer"
+              />
+            </div>
 
+            {/* Hora, Minutos y AM/PM */}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 flex-1 justify-center">
+                <Clock size={15} className="text-amber-400 mr-1.5 shrink-0" />
+                <select
+                  aria-label="Hora"
+                  value={hora}
+                  onChange={(e) => setHora(e.target.value)}
+                  className="bg-transparent text-sm text-zinc-100 focus:outline-none cursor-pointer"
+                >
+                  {horas.map((h) => (
+                    <option key={h} value={h} className="bg-zinc-900">
+                      {h}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-zinc-500 mx-1 font-bold">:</span>
+                <select
+                  aria-label="Minutos"
+                  value={minuto}
+                  onChange={(e) => setMinuto(e.target.value)}
+                  className="bg-transparent text-sm text-zinc-100 focus:outline-none cursor-pointer"
+                >
+                  {minutos.map((m) => (
+                    <option key={m} value={m} className="bg-zinc-900">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Botones AM / PM */}
+              <div className="flex bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 shrink-0">
+                {(['AM', 'PM'] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPeriodo(p)}
+                    className={`px-2.5 py-1.5 text-xs font-semibold rounded-md transition cursor-pointer ${
+                      periodo === p
+                        ? 'bg-amber-500 text-zinc-950'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
             <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -159,7 +250,7 @@ export default function Home() {
 
             <button
               type="submit"
-              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer ml-auto"
+              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus size={18} /> Guardar
             </button>
