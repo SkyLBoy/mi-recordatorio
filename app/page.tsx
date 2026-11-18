@@ -26,12 +26,13 @@ export default function Home() {
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [fecha, setFecha] = useState(obtenerFechaHoyLocal);
+  const [fecha, setFecha] = useState('');
   const [hora, setHora] = useState('09');
   const [minuto, setMinuto] = useState('00');
   const [periodo, setPeriodo] = useState<'AM' | 'PM'>('AM');
   const [urgente, setUrgente] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [ahoraMs, setAhoraMs] = useState<number>(0);
 
   const cargarTareas = async () => {
     setCargando(true);
@@ -42,10 +43,13 @@ export default function Home() {
       .order('fecha_recordatorio', { ascending: true });
 
     if (!error && data) setTareas(data);
+    setAhoraMs(Date.now());
     setCargando(false);
   };
 
   useEffect(() => {
+    setFecha(obtenerFechaHoyLocal());
+    setAhoraMs(Date.now());
     cargarTareas();
   }, []);
 
@@ -167,7 +171,7 @@ export default function Home() {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Solo Calendario (mantiene Clear y Today, sin la lista fea de horas) */}
+            {/* Calendario */}
             <div className="relative flex items-center">
               <Calendar
                 size={16}
@@ -264,7 +268,8 @@ export default function Home() {
             </p>
           ) : (
             tareas.map((tarea) => {
-              const vencida = new Date(tarea.fecha_recordatorio) < new Date();
+              const vencida =
+                ahoraMs > 0 && new Date(tarea.fecha_recordatorio).getTime() < ahoraMs;
               return (
                 <div
                   key={tarea.id}
